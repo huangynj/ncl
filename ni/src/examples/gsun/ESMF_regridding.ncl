@@ -19,6 +19,8 @@
 ;           Added version detection for ESMF_RegridWeightGen.
 ;           Added --ignore_degenerate flag to ESMF_RegridWeightGen for ESMF
 ;           >=7.0.0 to match functionality with older versions.
+;           Added --src_loc and --dst_loc flags to ESMF_RegridWeightGen to
+;           further ensure compatibility with old and new versions of ESMF.
 ;       27 Apr 2015:
 ;           Added unadvertised ElementVertices, so that user can input own 
 ;           element vertices mesh when regridding unstructured data.
@@ -2785,10 +2787,17 @@ begin
   end if
 
 ;---Check if the source grid file is an ESMF file.
-  if (isatt_logical_true(opt2,"SrcESMF").and. \
-      .not.(is_ESMF(srcGridFile,True))) then
-    print("ESMF_regrid_gen_weights: invalid or missing ESMF source grid file.")
-    exit
+  SRC_LOC = ""
+  if (isatt_logical_true(opt2,"SrcESMF")) then
+    if (is_ESMF(srcGridFile,True)) then
+      if (ESMF_MAJOR_VERSION.ge.7) then
+        ;---Necessary flag for ESMF >=7.0.0
+        SRC_LOC = "--src_loc corner "
+      end if
+    else
+      print("ESMF_regrid_gen_weights: invalid or missing ESMF source grid file.")
+      exit
+    end if
   end if
 
 ;---Check if the destination grid file is a SCRIP file.
@@ -2799,10 +2808,17 @@ begin
   end if
 
 ;---Check if the destination grid file is a ESMF file.
-  if (isatt_logical_true(opt2,"DstESMF").and. \
-      .not.(is_ESMF(dstGridFile,True))) then
-    print("ESMF_regrid_gen_weights: invalid or missing ESMF destination grid file.")
-    exit
+  DST_LOC = ""
+  if (isatt_logical_true(opt2,"DstESMF")) then
+    if (is_ESMF(dstGridFile,True)) then
+      if (ESMF_MAJOR_VERSION.ge.7) then
+        ;---Necessary flag for ESMF >=7.0.0
+        DST_LOC = "--dst_loc corner "
+      end if
+    else
+      print("ESMF_regrid_gen_weights: invalid or missing ESMF destination grid file.")
+      exit
+    end if
   end if
 
 ;
@@ -2837,12 +2853,14 @@ begin
   if (ismissing(getenv("ESMFBINDIR"))) then
     ESMFCMD = Executer + ESMF_exec + " " \
               + ESMF_IGNORE_DEGENERATE \
+              + SRC_LOC + DST_LOC \
               + "--source " + srcGridFile \
               + " --destination " + dstGridFile \
               + " --weight "+ wgtFile
   else 
     ESMFCMD = Executer + "$ESMFBINDIR/" + ESMF_exec + " " \
               + ESMF_IGNORE_DEGENERATE \
+              + SRC_LOC + DST_LOC \
               + "--source " + srcGridFile \
               + " --destination " + dstGridFile \
               + " --weight " + wgtFile
